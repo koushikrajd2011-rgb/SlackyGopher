@@ -1,15 +1,35 @@
 package main
 
 import (
+    "fmt"
     "log"
+    "math/rand"
     "os"
     "strings"
+    "time"
 
     "github.com/joho/godotenv"
     "github.com/slack-go/slack"
     "github.com/slack-go/slack/slackevents"
     "github.com/slack-go/slack/socketmode"
 )
+
+type Book struct {
+    Title string
+    Author string
+}
+
+var books = []Book{
+    {"To Kill a Mockingbird", "Harper Lee"},
+    {"Pride and Prejudice", "Jane Austen"},
+    {"The Diary of a Young Girl", "Anne Frank"},
+    {"Harry Potter and the Sorcerer's Stone", "J.K. Rowling"},
+    {"1985", "George Orwell"},
+    {"Animal Farm", "George Orwell"},
+    {"The Great Gatsby", "F. Scott Fitzgerald"},
+    {"The Catcher in the Rye", "J.D. Salinger"},
+    {"The Lord of the Rings", " J.R.R. Tolkein"},
+}
 
 func main() {
     if err := godotenv.Load(); err != nil {
@@ -19,30 +39,31 @@ func main() {
     appToken := os.Getenv("SLACK_APP_TOKEN")
     botToken := os.Getenv("SLACK_BOT_TOKEN")
     if appToken == "" || botToken == "" {
-        log.Fatal("Set SLACK_APP_TOKEN and SLACK_BOT_TOKEN first")
+        log.Fatal("Set SLACK_APP_TOKEN and SLACK_BOT_TOKEN environment variables")
     }
 
     api := slack.New(botToken, slack.OptionAppLevelToken(appToken))
     client := socketmode.New(api)
+    random := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-    go func() {
+    go func () {
         for evt := range client.Events {
             switch evt.Type {
             case socketmode.EventTypeConnected:
-                log.Println("Connected to Slack!")
+                log.Println("Connected to Slack")
 
             case socketmode.EventTypeEventsAPI:
                 if err := client.Ack(*evt.Request); err != nil {
-                    log.Println("Failed to acknowledge event:", err)
+                    log.Println("Failed to aknowledge event:", err)
                 }
 
-                event, ok := evt.Data.(slackevents.EventsAPIEvent)
-                if !ok || event.Type != slackevents.CallbackEvent {
+                events, ok := evt.Data.(slackevents.EventsAPIEvent)
+                if !ok || events.Type != slackevents.CallbackEvent {
                     continue
                 }
 
                 mention, ok := event.InnerEvent.Data.(*slackevents.AppMentionEvent)
-                if !ok || mention.BotID != "" || mention.User == "" {
+                if !ok || mention.BotID == "" {
                     continue
                 }
 
@@ -50,70 +71,7 @@ func main() {
 
             case socketmode.EventTypeSlashCommand:
                 cmd, ok := evt.Data.(slack.SlashCommand)
-                if !ok {
-                    client.Ack(*evt.Request)
-                    continue
-                }
-
-                if cmd.Command != "/goship" {
-                    client.Ack(*evt.Request)
-                    continue
-                }
-
-                var response string
-                switch strings.ToLower(strings.TrimSpace(cmd.Text)) {
-                case "hello":
-                    response = "Hello from Go!"
-                case "help":
-                    response = "Try /goship or /goship hello."
-                default:
-                    response = "Go Ship! Your slash command works."
-                }
-
-                blocks := []slack.Block{
-                    slack.NewHeaderBlock(
-                        slack.NewTextBlockObject(slack.PlainTextType, "Go Ship!", false, false),
-                    ),
-                    slack.NewSectionBlock(
-                        slack.NewTextBlockObject(
-                            slack.MarkdownType,
-                            "*Go Ship!* " + response,
-                            false, false,
-                        ),
-                        nil, nil,
-                    ),
-                    slack.NewDividerBlock(),
-                }
-
-                if err := client.Ack(*evt.Request, map[string]any{
-                    "response_type": "ephemeral",
-                    "text":          response,
-                    "blocks":        blocks,
-                }); err != nil {
-                    log.Println("Failed to respond to command:", err)
-                }
             }
         }
-    }()
-
-    log.Println("Connecting to Slack...")
-    if err := client.Run(); err != nil {
-        log.Fatal(err)
-    }
-}
-
-func handleMention(api *slack.Client, mention *slackevents.AppMentionEvent) {
-    threadTS := mention.ThreadTimeStamp
-    if threadTS == "" {
-        threadTS = mention.TimeStamp
-    }
-
-    _, _, err := api.PostMessage(
-        mention.Channel,
-        slack.MsgOptionText("Hey <@"+mention.User+">! Go Ship!", false),
-        slack.MsgOptionTS(threadTS),
-    )
-    if err != nil {
-        log.Println("Failed to reply to mention:", err)
     }
 }
