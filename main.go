@@ -381,10 +381,10 @@ func handleDiscovery(cmd slack.SlashCommand) {
 				"*Date:* %s\n"+
 				"*Medium:* %s\n\n"+
 				"_From The Metropolitan Museum of Art._",
-			slack.EscapeMessage(artwork.Title),
-			slack.EscapeMessage(artwork.Artist),
-			slack.EscapeMessage(artwork.Date),
-			slack.EscapeMessage(artwork.Medium),
+			slackutilsx.EscapeMessage(artwork.Title),
+			slackutilsx.EscapeMessage(artwork.Artist),
+			slackutilsx.EscapeMessage(artwork.Date),
+			slackutilsx.EscapeMessage(artwork.Medium),
 		)
 
 		if artwork.PublicDomain {
