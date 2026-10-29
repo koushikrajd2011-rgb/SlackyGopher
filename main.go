@@ -86,6 +86,80 @@ func main() {
 				var blocks []slack.Block
 
 				switch cmd.Command {
+
+                case "/goship-slacky-country", "/goship-slacky-art":
+	if err := client.Ack(*evt.Request); err != nil {
+		log.Println("Failed to acknowledge command:", err)
+		continue
+	}
+
+	go handleDiscovery(cmd)
+	continue
+
+case "/goship-slacky-word":
+	words := []struct {
+		Word    string
+		Meaning string
+		Example string
+		URL     string
+	}{
+		{
+			"Petrichor",
+			"The pleasant smell after rain falls on dry ground.",
+			"Petrichor drifted through the open window.",
+			"https://www.merriam-webster.com/dictionary/petrichor",
+		},
+		{
+			"Serendipity",
+			"Finding something good by chance.",
+			"Finding that little bookshop was pure serendipity.",
+			"https://www.merriam-webster.com/dictionary/serendipity",
+		},
+		{
+			"Ephemeral",
+			"Lasting for a very short time.",
+			"The rainbow was beautiful but ephemeral.",
+			"https://www.merriam-webster.com/dictionary/ephemeral",
+		},
+		{
+			"Resilient",
+			"Able to recover after difficulties.",
+			"The resilient team rebuilt their project.",
+			"https://www.merriam-webster.com/dictionary/resilient",
+		},
+		{
+			" Sonder",
+			"The realization that other people have lives as complex as your own.",
+			"The crowded station filled her with sonder.",
+			"https://en.wiktionary.org/wiki/sonder",
+		},
+	}
+
+	word := words[random.Intn(len(words))]
+
+	response = fmt.Sprintf(
+		"*%s*\n\n%s\n\n*Example*\n_%s_\n\n<%s|Read more>",
+		strings.TrimSpace(word.Word),
+		word.Meaning,
+		word.Example,
+		word.URL,
+	)
+
+case "/goship-slacky-quote":
+	quotes := []string{
+		"Small steps still move you forward.",
+		"Make something imperfect, then make it better.",
+		"A difficult day does not erase your progress.",
+		"You do not need the whole plan to take the next step.",
+		"Curiosity turns mistakes into lessons.",
+		"Rest is part of the process.",
+		"Build something that makes you smile.",
+		"Start with what you have. Improve as you learn.",
+	}
+
+	response = "*A thought for today*\n\n> " +
+		quotes[random.Intn(len(quotes))]
+
 				case "/goship-slacky-book":
 					book := books[random.Intn(len(books))]
 
