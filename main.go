@@ -7,6 +7,11 @@ import (
 	"os"
 	"strings"
 	"time"
+    "bytes"
+    "encoding/json"
+    "io"
+    "net/http"
+    "net/url"
 
 	"github.com/joho/godotenv"
 	"github.com/slack-go/slack"
@@ -85,7 +90,7 @@ func main() {
 					book := books[random.Intn(len(books))]
 
 					response = fmt.Sprintf(
-						"📚 *A book suggested just for you!*\n\n*%s*\n_by %s_\n\n"+
+						"*A book suggested just for you!*\n\n*%s*\n_by %s_\n\n"+
 							"<https://www.goodreads.com/list/show/264.Books_That_Everyone_Should_Read_At_Least_Once|Explore the reading list>",
 						book.Title,
 						book.Author,
@@ -197,5 +202,198 @@ func handleMention(api *slack.Client, mention *slackevents.AppMentionEvent) {
 	)
 	if err != nil {
 		log.Println("Failed to reply to mention:", err)
+	}
+}
+
+type Country struct {
+    Name     string
+    Flag     string
+    Capital  string
+    Region   string
+    Language string
+    Currency string
+}
+
+func handleDiscovery(cmd slack.SlashCommand) {
+    random := rand.New(rand.NewSource(time.Now().UnixNano()))
+
+    var text string
+    var imageURL string
+    var buttonURL string
+    var buttonLabel string
+
+    switch cmd.Command {
+    case "/goship-slacky-country":
+        countries := []Country {
+            {"Japan", "🇯🇵", "Tokyo", "Asia", "Japanese", "Japanese Yen"},
+            {"France", "🇫🇷", "Paris", "Europe", "French", "Euro"},
+            {"South Korea", "🇰🇷", "Seoul", "Asia", "Korean", "South Korean Won"},
+            {"Brazil", "🇧🇷", "Brasilia", "South America", "Portuguese", "Brazilian Real"},
+            {"Australia", "🇦🇺", "Canberra", "Oceania", "English", "Australian Dollar"},
+            {"Italy", "🇮🇹", "Rome", "Europe", "Italian", "Euro"},
+            {"Germany", "🇩🇪", "Berlin", "Europe", "German", "Euro"},
+            {"Mexico", "🇲🇽", "Mexico City", "North America", "Spanish", "Mexican Peso"},
+            {"Egypt", "🇪🇬", "Cairo", "Africa", "Arabic", "Egyptian Pound"},
+            {"Thailand", "🇹🇭", "Bangkok", "Asia", "Thai", "Thai Baht"},
+            {"Portugal", "🇵🇹", "Lisbon", "Europe", "Portuguese", "Euro"},
+        }
+
+        country := countries[random.Intn(len(countries))]
+
+        text = fmt.Sprintf(
+            "%s *%s*\n\n"+
+            "*Capital:* %s\n"+
+            "*Region:* %s\n"+
+            "*Main Language:* %s\n"+
+            "*Currency:* %s",
+            country.Flag,
+            country.Name,
+            country.Capital,
+            country.Region,
+            country.Language,
+            country.Currency
+        )
+
+        buttonURL = "https://www.google.com/maps/search/?api=1&query=" + url.QueryEscape(country.Name)
+        buttonLabel = "Open map"
+
+    case "/goship-slacky-art":
+        artIDs := []int{436535, 436532, 437127}
+        id := artIDs[random.Intn(len(artIDs))]
+
+        endpoint := fmt.Sprintf(
+            "https://collectionapi.metmuseum.org/public/collection/vi/objects/%d",
+            id,
+        )
+
+        client := &http.Client{Timeout: 10 * time.Second}
+
+        resp, err := client.Get(endpoint)
+        if err != nil {
+            sendDiscover(cmd.ResponseURL, "Couldn't reach the museum. Try again.", nil)
+            return
+        }
+        defer resp.Body.Close()
+
+        if resp.StatusCode != http.StatusOK {
+            sendDiscovery(cmd.ResponseURL, "The museum is unavailable. Try again later", nil)
+            return
+        }
+
+        var artwork struct {
+            Title        string `json:"title"`
+			Artist       string `json:"artistDisplayName"`
+			Date         string `json:"objectDate"`
+			Medium       string `json:"medium"`
+			Image        string `json:"primaryImageSmall"`
+			URL          string `json:"objectURL"`
+			PublicDomain bool   `json:"isPublicDomain"`
+        }
+
+        err = json.NewDecoder(io.LimitReader(resp.Body, 2<<20)).Decode(&artwork)
+		if err != nil || artwork.Title == "" {
+			sendDiscovery(cmd.ResponseURL, "Couldn't load the artwork. Try again.", nil)
+			return
+		}
+
+		if artwork.Artist == "" {
+			artwork.Artist = "Unknown artist"
+		}
+
+		text = fmt.Sprintf(
+			"*%s*\n\n"+
+				"*Artist:* %s\n"+
+				"*Date:* %s\n"+
+				"*Medium:* %s\n\n"+
+				"_From The Metropolitan Museum of Art._",
+			slack.EscapeMessage(artwork.Title),
+			slack.EscapeMessage(artwork.Artist),
+			slack.EscapeMessage(artwork.Date),
+			slack.EscapeMessage(artwork.Medium),
+		)
+
+		if artwork.PublicDomain {
+			imageURL = artwork.Image
+		}
+
+		buttonURL = artwork.URL
+		buttonLabel = "View in museum"
+	}
+
+	blocks := []slack.Block{
+		slack.NewSectionBlock(
+			slack.NewTextBlockObject(
+				slack.MarkdownType,
+				text,
+				false,
+				false,
+			),
+			nil,
+			nil,
+		),
+	}
+
+	if imageURL != "" {
+		blocks = append(blocks, slack.NewImageBlock(
+			imageURL,
+			"Artwork from The Metropolitan Museum of Art",
+			"",
+			nil,
+		))
+	}
+
+	if buttonURL != "" {
+		button := slack.NewButtonBlockElement(
+			"discovery_link",
+			"open",
+			slack.NewTextBlockObject(
+				slack.PlainTextType,
+				buttonLabel,
+				false,
+				false,
+			),
+		)
+		button.URL = buttonURL
+
+		blocks = append(blocks, slack.NewActionBlock(
+			"discovery_actions",
+			button,
+		))
+	}
+
+	sendDiscovery(cmd.ResponseURL, text, blocks)
+}
+
+func sendDiscovery(responseURL, text string, blocks []slack.Block) {
+	payload := map[string]any{
+		"response_type": "ephemeral",
+		"text":          text,
+	}
+
+	if len(blocks) > 0 {
+		payload["blocks"] = blocks
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		log.Println("Failed to prepare response:", err)
+		return
+	}
+
+	client := &http.Client{Timeout: 15 * time.Second}
+
+	resp, err := client.Post(
+		responseURL,
+		"application/json",
+		bytes.NewReader(body),
+	)
+	if err != nil {
+		log.Println("Failed to send response:", err)
+		return
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		log.Println("Slack rejected response:", resp.StatusCode)
 	}
 }

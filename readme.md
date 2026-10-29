@@ -6,4 +6,5 @@ SlackyGopher works in slack, just use the slash command /goship-slacky and it ha
 The available commands for now - 
 * /goship-slacky-book , get a suggestion and read a new book!
 * /goship-slacky-gopher , get a picture of a gopher plushieee
-* /goshio-slacky-
+* /goship-slacky-country , get a country's breif details
+* /goship-slacky-art , Find an Art along with it's detailss
