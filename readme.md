@@ -13,4 +13,4 @@ The available commands for now -
 * /goship-slacky-word , learn a new word from a gopher
 * /goship-slacky-quote , Listen to one of slackygopher's fav quotess!
 
-Try out slackygopher in the botspam - 
+Try out slackygopher in the botspam - https://app.slack.com/client/E09V59WQY1E/C0CE17V9J3A
