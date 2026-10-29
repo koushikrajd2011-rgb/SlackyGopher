@@ -7,11 +7,11 @@ import (
 	"os"
 	"strings"
 	"time"
-    "bytes"
-    "encoding/json"
-    "io"
-    "net/http"
-    "net/url"
+	"bytes"
+	"encoding/json"
+	"io"
+	"net/http"
+	"net/url"
 
 	"github.com/joho/godotenv"
 	"github.com/slack-go/slack"
@@ -86,79 +86,78 @@ func main() {
 				var blocks []slack.Block
 
 				switch cmd.Command {
+				case "/goship-slacky-country", "/goship-slacky-art":
+					if err := client.Ack(*evt.Request); err != nil {
+						log.Println("Failed to acknowledge command:", err)
+						continue
+					}
 
-                case "/goship-slacky-country", "/goship-slacky-art":
-	if err := client.Ack(*evt.Request); err != nil {
-		log.Println("Failed to acknowledge command:", err)
-		continue
-	}
+					go handleDiscovery(cmd)
+					continue
 
-	go handleDiscovery(cmd)
-	continue
+				case "/goship-slacky-word":
+					words := []struct {
+						Word    string
+						Meaning string
+						Example string
+						URL     string
+					}{
+						{
+							"Petrichor",
+							"The pleasant smell after rain falls on dry ground.",
+							"Petrichor drifted through the open window.",
+							"https://www.merriam-webster.com/dictionary/petrichor",
+						},
+						{
+							"Serendipity",
+							"Finding something good by chance.",
+							"Finding that little bookshop was pure serendipity.",
+							"https://www.merriam-webster.com/dictionary/serendipity",
+						},
+						{
+							"Ephemeral",
+							"Lasting for a very short time.",
+							"The rainbow was beautiful but ephemeral.",
+							"https://www.merriam-webster.com/dictionary/ephemeral",
+						},
+						{
+							"Resilient",
+							"Able to recover after difficulties.",
+							"The resilient team rebuilt their project.",
+							"https://www.merriam-webster.com/dictionary/resilient",
+						},
+						{
+							" Sonder",
+							"The realization that other people have lives as complex as your own.",
+							"The crowded station filled her with sonder.",
+							"https://en.wiktionary.org/wiki/sonder",
+						},
+					}
 
-case "/goship-slacky-word":
-	words := []struct {
-		Word    string
-		Meaning string
-		Example string
-		URL     string
-	}{
-		{
-			"Petrichor",
-			"The pleasant smell after rain falls on dry ground.",
-			"Petrichor drifted through the open window.",
-			"https://www.merriam-webster.com/dictionary/petrichor",
-		},
-		{
-			"Serendipity",
-			"Finding something good by chance.",
-			"Finding that little bookshop was pure serendipity.",
-			"https://www.merriam-webster.com/dictionary/serendipity",
-		},
-		{
-			"Ephemeral",
-			"Lasting for a very short time.",
-			"The rainbow was beautiful but ephemeral.",
-			"https://www.merriam-webster.com/dictionary/ephemeral",
-		},
-		{
-			"Resilient",
-			"Able to recover after difficulties.",
-			"The resilient team rebuilt their project.",
-			"https://www.merriam-webster.com/dictionary/resilient",
-		},
-		{
-			" Sonder",
-			"The realization that other people have lives as complex as your own.",
-			"The crowded station filled her with sonder.",
-			"https://en.wiktionary.org/wiki/sonder",
-		},
-	}
+					word := words[random.Intn(len(words))]
 
-	word := words[random.Intn(len(words))]
+					response = fmt.Sprintf(
+						"*%s*\n\n%s\n\n*Example*\n_%s_\n\n<%s|Read more>",
+						strings.TrimSpace(word.Word),
+						word.Meaning,
+						word.Example,
+						word.URL,
+					)
 
-	response = fmt.Sprintf(
-		"*%s*\n\n%s\n\n*Example*\n_%s_\n\n<%s|Read more>",
-		strings.TrimSpace(word.Word),
-		word.Meaning,
-		word.Example,
-		word.URL,
-	)
+				case "/goship-slacky-quote":
+					quotes := []string{
+						"Small steps still move you forward.",
+						"Make something imperfect, then make it better.",
+						"A difficult day does not erase your progress.",
+						"You do not need the whole plan to take the next step.",
+						"Curiosity turns mistakes into lessons.",
+						"Rest is part of the process.",
+						"Build something that makes you smile.",
+						"Start with what you have. Improve as you learn.",
+					}
 
-case "/goship-slacky-quote":
-	quotes := []string{
-		"Small steps still move you forward.",
-		"Make something imperfect, then make it better.",
-		"A difficult day does not erase your progress.",
-		"You do not need the whole plan to take the next step.",
-		"Curiosity turns mistakes into lessons.",
-		"Rest is part of the process.",
-		"Build something that makes you smile.",
-		"Start with what you have. Improve as you learn.",
-	}
-
-	response = "*A thought for today*\n\n> " +
-		quotes[random.Intn(len(quotes))]
+					response = "*A thought for today*\n\n> " +
+						quotes[random.Intn(len(quotes))]
 
 				case "/goship-slacky-book":
 					book := books[random.Intn(len(books))]
@@ -280,91 +279,91 @@ func handleMention(api *slack.Client, mention *slackevents.AppMentionEvent) {
 }
 
 type Country struct {
-    Name     string
-    Flag     string
-    Capital  string
-    Region   string
-    Language string
-    Currency string
+	Name     string
+	Flag     string
+	Capital  string
+	Region   string
+	Language string
+	Currency string
 }
 
 func handleDiscovery(cmd slack.SlashCommand) {
-    random := rand.New(rand.NewSource(time.Now().UnixNano()))
+	random := rand.New(rand.NewSource(time.Now().UnixNano()))
 
-    var text string
-    var imageURL string
-    var buttonURL string
-    var buttonLabel string
+	var text string
+	var imageURL string
+	var buttonURL string
+	var buttonLabel string
 
-    switch cmd.Command {
-    case "/goship-slacky-country":
-        countries := []Country {
-            {"Japan", "🇯🇵", "Tokyo", "Asia", "Japanese", "Japanese Yen"},
-            {"France", "🇫🇷", "Paris", "Europe", "French", "Euro"},
-            {"South Korea", "🇰🇷", "Seoul", "Asia", "Korean", "South Korean Won"},
-            {"Brazil", "🇧🇷", "Brasilia", "South America", "Portuguese", "Brazilian Real"},
-            {"Australia", "🇦🇺", "Canberra", "Oceania", "English", "Australian Dollar"},
-            {"Italy", "🇮🇹", "Rome", "Europe", "Italian", "Euro"},
-            {"Germany", "🇩🇪", "Berlin", "Europe", "German", "Euro"},
-            {"Mexico", "🇲🇽", "Mexico City", "North America", "Spanish", "Mexican Peso"},
-            {"Egypt", "🇪🇬", "Cairo", "Africa", "Arabic", "Egyptian Pound"},
-            {"Thailand", "🇹🇭", "Bangkok", "Asia", "Thai", "Thai Baht"},
-            {"Portugal", "🇵🇹", "Lisbon", "Europe", "Portuguese", "Euro"},
-        }
+	switch cmd.Command {
+	case "/goship-slacky-country":
+		countries := []Country{
+			{"Japan", "🇯🇵", "Tokyo", "Asia", "Japanese", "Japanese Yen"},
+			{"France", "🇫🇷", "Paris", "Europe", "French", "Euro"},
+			{"South Korea", "🇰🇷", "Seoul", "Asia", "Korean", "South Korean Won"},
+			{"Brazil", "🇧🇷", "Brasilia", "South America", "Portuguese", "Brazilian Real"},
+			{"Australia", "🇦🇺", "Canberra", "Oceania", "English", "Australian Dollar"},
+			{"Italy", "🇮🇹", "Rome", "Europe", "Italian", "Euro"},
+			{"Germany", "🇩🇪", "Berlin", "Europe", "German", "Euro"},
+			{"Mexico", "🇲🇽", "Mexico City", "North America", "Spanish", "Mexican Peso"},
+			{"Egypt", "🇪🇬", "Cairo", "Africa", "Arabic", "Egyptian Pound"},
+			{"Thailand", "🇹🇭", "Bangkok", "Asia", "Thai", "Thai Baht"},
+			{"Portugal", "🇵🇹", "Lisbon", "Europe", "Portuguese", "Euro"},
+		}
 
-        country := countries[random.Intn(len(countries))]
+		country := countries[random.Intn(len(countries))]
 
-        text = fmt.Sprintf(
-            "%s *%s*\n\n"+
-            "*Capital:* %s\n"+
-            "*Region:* %s\n"+
-            "*Main Language:* %s\n"+
-            "*Currency:* %s",
-            country.Flag,
-            country.Name,
-            country.Capital,
-            country.Region,
-            country.Language,
-            country.Currency
-        )
+		text = fmt.Sprintf(
+			"%s *%s*\n\n"+
+				"*Capital:* %s\n"+
+				"*Region:* %s\n"+
+				"*Main Language:* %s\n"+
+				"*Currency:* %s",
+			country.Flag,
+			country.Name,
+			country.Capital,
+			country.Region,
+			country.Language,
+			country.Currency,
+		)
 
-        buttonURL = "https://www.google.com/maps/search/?api=1&query=" + url.QueryEscape(country.Name)
-        buttonLabel = "Open map"
+		buttonURL = "https://www.google.com/maps/search/?api=1&query=" + url.QueryEscape(country.Name)
+		buttonLabel = "Open map"
 
-    case "/goship-slacky-art":
-        artIDs := []int{436535, 436532, 437127}
-        id := artIDs[random.Intn(len(artIDs))]
+	case "/goship-slacky-art":
+		artIDs := []int{436535, 436532, 437127}
+		id := artIDs[random.Intn(len(artIDs))]
 
-        endpoint := fmt.Sprintf(
-            "https://collectionapi.metmuseum.org/public/collection/vi/objects/%d",
-            id,
-        )
+		endpoint := fmt.Sprintf(
+			"https://collectionapi.metmuseum.org/public/collection/v1/objects/%d",
+			id,
+		)
 
-        client := &http.Client{Timeout: 10 * time.Second}
+		client := &http.Client{Timeout: 10 * time.Second}
 
-        resp, err := client.Get(endpoint)
-        if err != nil {
-            sendDiscover(cmd.ResponseURL, "Couldn't reach the museum. Try again.", nil)
-            return
-        }
-        defer resp.Body.Close()
+		resp, err := client.Get(endpoint)
+		if err != nil {
+			sendDiscovery(cmd.ResponseURL, "Couldn't reach the museum. Try again.", nil)
+			return
+		}
+		defer resp.Body.Close()
 
-        if resp.StatusCode != http.StatusOK {
-            sendDiscovery(cmd.ResponseURL, "The museum is unavailable. Try again later", nil)
-            return
-        }
+		if resp.StatusCode != http.StatusOK {
+			sendDiscovery(cmd.ResponseURL, "The museum is unavailable. Try again later", nil)
+			return
+		}
 
-        var artwork struct {
-            Title        string `json:"title"`
+		var artwork struct {
+			Title        string `json:"title"`
 			Artist       string `json:"artistDisplayName"`
 			Date         string `json:"objectDate"`
 			Medium       string `json:"medium"`
 			Image        string `json:"primaryImageSmall"`
 			URL          string `json:"objectURL"`
 			PublicDomain bool   `json:"isPublicDomain"`
-        }
+		}
 
-        err = json.NewDecoder(io.LimitReader(resp.Body, 2<<20)).Decode(&artwork)
+		err = json.NewDecoder(io.LimitReader(resp.Body, 2<<20)).Decode(&artwork)
 		if err != nil || artwork.Title == "" {
 			sendDiscovery(cmd.ResponseURL, "Couldn't load the artwork. Try again.", nil)
 			return
